@@ -28,6 +28,17 @@ DISALLOWED_AUTHORS = [
 ]
 
 
+# A reviewer adds this label to a pull request once they've confirmed that the
+# X (Twitter) account and the GitHub account belong to the same person.
+TWITTER_VERIFIED_LABEL = 'twitter-verified'
+
+
+@cache
+def get_pr_labels() -> set[str]:
+    """Labels that are on the pull request, as passed in by the workflow."""
+    return set(json.loads(os.environ.get('PR_LABELS', '[]')))
+
+
 ALLOWED_AUTHOR_NAME_CHANGES = {
     'anixx': 'Anixx',
     'kawapure': 'Isabella Lulamoon (kawapure)',
@@ -468,8 +479,10 @@ class ModMetadataValidator:
             '@@ must contain only lowercase letters, numbers and dashes',
         )
 
-        if len(prop.value) < 8 or len(prop.value) > 50:
-            prop.warn('@@ must be between 8 and 50 characters')
+        min_len = 6
+        max_len = 48
+        if len(prop.value) < min_len or len(prop.value) > max_len:
+            prop.warn(f'@@ must be between {min_len} and {max_len} characters')
 
     def validate_version(self):
         """Validate version format."""
@@ -525,6 +538,11 @@ class ModMetadataValidator:
                     )
                     break
 
+        min_len = 3
+        max_len = 28
+        if len(prop.value) < min_len or len(prop.value) > max_len:
+            prop.warn(f'@@ must be between {min_len} and {max_len} characters')
+
     def validate_twitter(self):
         """Validate Twitter handle."""
         prop = self.property('twitter')
@@ -559,16 +577,18 @@ class ModMetadataValidator:
                     )
                     break
             else:
-                # Not used by anyone else, still requires manual verification
-                prop.warn(
-                    '@@ requires manual verification\n\n'
-                    'To verify your X (Twitter) account, please send me'
-                    ' (https://x.com/m417z) a direct message with the following'
-                    ' content:\n\n'
-                    'I attest that I\'m the sole owner of both this Twitter account'
-                    f' ({prop.value}) and the following GitHub account:'
-                    f' {self.github_url}'
-                )
+                # Not used by anyone else, so it takes a manual check that the
+                # same person owns both accounts.
+                if TWITTER_VERIFIED_LABEL not in get_pr_labels():
+                    prop.warn(
+                        '@@ requires manual verification\n\n'
+                        'To verify your X (Twitter) account, please send me'
+                        ' (https://x.com/m417z) a direct message with the following'
+                        ' content:\n\n'
+                        'I attest that I\'m the sole owner of both this Twitter account'
+                        f' ({prop.value}) and the following GitHub account:'
+                        f' {self.github_url}'
+                    )
 
         prop.validate_url_format()
 
@@ -653,8 +673,10 @@ class ModMetadataValidator:
         if not prop:
             return
 
-        if len(prop.value) < 8 or len(prop.value) > 80:
-            prop.warn('@@ must be between 8 and 80 characters')
+        min_len = 6
+        max_len = 68
+        if len(prop.value) < min_len or len(prop.value) > max_len:
+            prop.warn(f'@@ must be between {min_len} and {max_len} characters')
 
         # Check for duplicate names across existing mods
         filename_mod_id = self.ctx.path.name.removesuffix('.cpp').removesuffix('.wh')
@@ -676,8 +698,10 @@ class ModMetadataValidator:
         if not prop:
             return
 
-        if len(prop.value) < 30 or len(prop.value) > 250:
-            prop.warn('@@ must be between 30 and 250 characters')
+        min_len = 30
+        max_len = 250
+        if len(prop.value) < min_len or len(prop.value) > max_len:
+            prop.warn(f'@@ must be between {min_len} and {max_len} characters')
 
     def validate_architecture(self):
         """Validate architecture values."""
@@ -1067,6 +1091,7 @@ def validate_specific_keywords(path: Path, mod_source: str):
         (r'Wh_FindFirstSymbol', 'Wh_FindFirstSymbol'),
         (r'Wh_FindNextSymbol', 'Wh_FindNextSymbol'),
         (r'Wh_FindCloseSymbol', 'Wh_FindCloseSymbol'),
+        (r'noUndecoratedSymbols', 'noUndecoratedSymbols'),
     ]
 
     for line_num, line in enumerate(mod_source_lines, start=1):

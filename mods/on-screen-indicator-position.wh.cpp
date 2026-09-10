@@ -1,8 +1,8 @@
 // ==WindhawkMod==
 // @id              on-screen-indicator-position
 // @name            On-Screen Indicator Position
-// @description     Place the volume/brightness/camera on-screen indicator anywhere on the screen, not just the three positions Windows offers
-// @version         1.1.4
+// @description     Put the volume, brightness and camera on-screen indicators anywhere on the screen, each in its own spot if you like, instead of the three positions Windows offers
+// @version         1.2.7
 // @author          mario0318
 // @github          https://github.com/mario0318
 // @include         explorer.exe
@@ -26,7 +26,9 @@ Windows lets you put it in one of three places: top left, top center, or bottom
 center.
 
 This mod replaces that with a full nine-point grid, any corner, any edge center,
-or dead center, plus a pixel offset for fine-tuning.
+or dead center, plus a pixel offset for fine-tuning. Each kind of indicator can
+also be given a spot of its own, so the volume one can sit somewhere different
+from the brightness one.
 
 The brightness indicator moved to the middle of the right edge:
 
@@ -45,6 +47,19 @@ would push it past an edge stops at the edge instead of moving off screen. You
 can also leave the position on **Windows default** and use the offsets alone to
 nudge one of the built-in positions.
 
+## A different spot per indicator
+
+Volume, brightness, keyboard brightness, airplane mode, camera, microphone and the
+plain text indicator can each be given their own position. Anything left on **Same
+as the main position** follows the setting above, so you only have to touch the ones
+you want somewhere else. Handy if you want the volume indicator out of the way at the
+bottom but still want the camera one where you will notice it.
+
+Volume kept at the top left while brightness sits in the middle. Only one of them is
+ever on screen at a time, so this is the same desktop photographed twice:
+
+![Volume top left, brightness center](https://raw.githubusercontent.com/mario0318/windhawk-mods/628f80317652209d3feed54eadf9c329e77b04a7/on-screen-indicator-position/per-indicator.jpg)
+
 ## Choosing a monitor
 
 This mod only changes where the indicator sits on a screen, not which screen it
@@ -61,6 +76,9 @@ a monitor by number or by interface name. The two work together.
 * Offsets are given at 100% scaling and scaled to whichever monitor the
   indicator appears on, so the same value moves the same distance on a display
   running at 150%.
+* With two indicators set to different spots you can catch the previous one
+  flashing at the new spot for a frame before the new one draws. That's the
+  confirmator reusing its frame, the placement hook can't do anything about it.
 * Tested on Windows 11 build 26200 (25H2) x64, on a 100% and a 150% display.
 
 ## Credits
@@ -77,7 +95,9 @@ both target the same function and work out the origin handling.
 /*
 - position: topRight
   $name: Position
-  $description: Where on the screen the indicator appears
+  $description: >-
+    Where on the screen the indicator appears. Anything left on "Same as the main
+    position" below follows this one.
   $options:
   - windowsDefault: Windows default (only apply the offsets)
   - topLeft: Top left
@@ -105,6 +125,102 @@ both target the same function and work out the origin handling.
     setting moves the same distance on a scaled display. The indicator is kept
     inside the area Windows lays it out in, so an offset that would push it past
     an edge stops at the edge instead.
+- perIndicator:
+  - volume: same
+    $name: Volume
+    $options:
+    - same: Same as the main position
+    - topLeft: Top left
+    - topCenter: Top center
+    - topRight: Top right
+    - middleLeft: Middle left
+    - center: Center
+    - middleRight: Middle right
+    - bottomLeft: Bottom left
+    - bottomCenter: Bottom center
+    - bottomRight: Bottom right
+  - brightness: same
+    $name: Brightness
+    $options:
+    - same: Same as the main position
+    - topLeft: Top left
+    - topCenter: Top center
+    - topRight: Top right
+    - middleLeft: Middle left
+    - center: Center
+    - middleRight: Middle right
+    - bottomLeft: Bottom left
+    - bottomCenter: Bottom center
+    - bottomRight: Bottom right
+  - keyboardBrightness: same
+    $name: Keyboard brightness
+    $options:
+    - same: Same as the main position
+    - topLeft: Top left
+    - topCenter: Top center
+    - topRight: Top right
+    - middleLeft: Middle left
+    - center: Center
+    - middleRight: Middle right
+    - bottomLeft: Bottom left
+    - bottomCenter: Bottom center
+    - bottomRight: Bottom right
+  - airplaneMode: same
+    $name: Airplane mode
+    $options:
+    - same: Same as the main position
+    - topLeft: Top left
+    - topCenter: Top center
+    - topRight: Top right
+    - middleLeft: Middle left
+    - center: Center
+    - middleRight: Middle right
+    - bottomLeft: Bottom left
+    - bottomCenter: Bottom center
+    - bottomRight: Bottom right
+  - camera: same
+    $name: Camera
+    $options:
+    - same: Same as the main position
+    - topLeft: Top left
+    - topCenter: Top center
+    - topRight: Top right
+    - middleLeft: Middle left
+    - center: Center
+    - middleRight: Middle right
+    - bottomLeft: Bottom left
+    - bottomCenter: Bottom center
+    - bottomRight: Bottom right
+  - microphone: same
+    $name: Microphone
+    $options:
+    - same: Same as the main position
+    - topLeft: Top left
+    - topCenter: Top center
+    - topRight: Top right
+    - middleLeft: Middle left
+    - center: Center
+    - middleRight: Middle right
+    - bottomLeft: Bottom left
+    - bottomCenter: Bottom center
+    - bottomRight: Bottom right
+  - text: same
+    $name: Other indicators
+    $options:
+    - same: Same as the main position
+    - topLeft: Top left
+    - topCenter: Top center
+    - topRight: Top right
+    - middleLeft: Middle left
+    - center: Center
+    - middleRight: Middle right
+    - bottomLeft: Bottom left
+    - bottomCenter: Bottom center
+    - bottomRight: Bottom right
+  $name: Position per indicator
+  $description: >-
+    Give an individual indicator its own spot. Anything left on Same as the main
+    position follows the Position setting above. The offsets apply to all of them.
 */
 // ==/WindhawkModSettings==
 
@@ -127,6 +243,37 @@ enum class Position {
     bottomRight,
 };
 
+// Which indicator is being shown. Windows has a separate entry point per kind,
+// so the kind is recorded as one is requested and read back when the position is
+// worked out. `same` means the kind has no position of its own.
+enum class Indicator {
+    volume,
+    brightness,
+    keyboardBrightness,
+    airplaneMode,
+    camera,
+    microphone,
+    text,
+    count,
+    // Nothing has been shown yet, so there is no kind to look up and the main
+    // position is used.
+    unknown,
+};
+
+// Only one indicator is on screen at a time, and the entry point runs before the
+// position is worked out, so a single value is enough.
+std::atomic<Indicator> g_currentIndicator{Indicator::unknown};
+
+// Set when any of the per-kind entry points didn't resolve. The recorded kind is
+// then meaningless, since an unhooked kind would be placed using whichever kind
+// was recorded before it, so the overrides are ignored for the session and
+// everything uses the main position. Checked once at init rather than guessed at
+// per placement.
+std::atomic<bool> g_kindUnreliable{false};
+
+// Must match the `position` default in the settings block above.
+constexpr Position kDefaultPosition = Position::topRight;
+
 // Written from Wh_ModSettingsChanged on an arbitrary thread and read on the
 // confirmator's UI thread, so the members are atomic. Each field is still read
 // separately, so a settings change landing mid-placement can put one indicator
@@ -136,7 +283,37 @@ struct {
     std::atomic<Position> position;
     std::atomic<int> offsetX;
     std::atomic<int> offsetY;
+    // Position::windowsDefault means "no override", so the main position is used.
+    // It is never offered as a per-indicator choice, which leaves it free to be
+    // the sentinel. The main position keeps its own meaning of leaving Windows'
+    // spot alone.
+    std::atomic<Position> perIndicator[(size_t)Indicator::count];
 } g_settings;
+
+bool AnyPerIndicator() {
+    for (size_t i = 0; i < (size_t)Indicator::count; i++) {
+        if (g_settings.perIndicator[i].load() != Position::windowsDefault) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// The position to place the indicator that is being shown right now.
+Position CurrentPosition() {
+    if (g_kindUnreliable.load()) {
+        return g_settings.position.load();
+    }
+
+    size_t i = (size_t)g_currentIndicator.load();
+    Position perIndicator = i < (size_t)Indicator::count
+                                ? g_settings.perIndicator[i].load()
+                                : Position::windowsDefault;
+
+    return perIndicator != Position::windowsDefault ? perIndicator
+                                                    : g_settings.position.load();
+}
 
 HMODULE g_hardwareConfirmatorModule;
 
@@ -152,14 +329,18 @@ struct WinrtRect {
 // `rect` comes back from the original function holding the size Windows chose
 // and the position it picked from the built-in setting; only the position is
 // replaced.
-void PlaceInArea(const WinrtRect& area, int offsetX, int offsetY, WinrtRect* rect) {
+void PlaceInArea(const WinrtRect& area,
+                 Position position,
+                 int offsetX,
+                 int offsetY,
+                 WinrtRect* rect) {
     float centerX = (area.Width - rect->Width) / 2;
     float right = area.Width - rect->Width;
 
     float middleY = (area.Height - rect->Height) / 2;
     float bottom = area.Height - rect->Height;
 
-    switch (g_settings.position.load()) {
+    switch (position) {
         case Position::topLeft:
             rect->X = 0;
             rect->Y = 0;
@@ -219,6 +400,79 @@ void PlaceInArea(const WinrtRect& area, int offsetX, int offsetY, WinrtRect* rec
     }
 }
 
+// Each kind of indicator has its own entry point on the host, so the kind is
+// recorded as one is asked for and read back when the position is worked out.
+// They are private coroutines returning winrt::fire_and_forget, an empty struct,
+// so the return is passed through as the single byte it occupies. Every one is
+// hooked as optional, so a name that stops resolving on some build costs the per
+// indicator feature rather than the whole mod. Wh_ModInit checks afterwards that
+// all eight resolved, and if any didn't it ignores the overrides for the session
+// instead of placing one kind using another kind's spot.
+
+using ShowVolumeAsync_t = char(WINAPI*)(void* pThis, int value);
+ShowVolumeAsync_t ShowVolumeAsync_Original;
+char WINAPI ShowVolumeAsync_Hook(void* pThis, int value) {
+    g_currentIndicator.store(Indicator::volume);
+    return ShowVolumeAsync_Original(pThis, value);
+}
+
+using ShowBrightnessAsync_t = char(WINAPI*)(void* pThis, int value);
+ShowBrightnessAsync_t ShowBrightnessAsync_Original;
+char WINAPI ShowBrightnessAsync_Hook(void* pThis, int value) {
+    g_currentIndicator.store(Indicator::brightness);
+    return ShowBrightnessAsync_Original(pThis, value);
+}
+
+using ShowKeyboardBrightnessAsync_t = char(WINAPI*)(void* pThis, int value);
+ShowKeyboardBrightnessAsync_t ShowKeyboardBrightnessAsync_Original;
+char WINAPI ShowKeyboardBrightnessAsync_Hook(void* pThis, int value) {
+    g_currentIndicator.store(Indicator::keyboardBrightness);
+    return ShowKeyboardBrightnessAsync_Original(pThis, value);
+}
+
+using ShowAirplaneModeOnAsync_t = char(WINAPI*)(void* pThis, bool value);
+ShowAirplaneModeOnAsync_t ShowAirplaneModeOnAsync_Original;
+char WINAPI ShowAirplaneModeOnAsync_Hook(void* pThis, bool value) {
+    g_currentIndicator.store(Indicator::airplaneMode);
+    return ShowAirplaneModeOnAsync_Original(pThis, value);
+}
+
+using ShowCameraOnAsync_t = char(WINAPI*)(void* pThis, bool value);
+ShowCameraOnAsync_t ShowCameraOnAsync_Original;
+char WINAPI ShowCameraOnAsync_Hook(void* pThis, bool value) {
+    g_currentIndicator.store(Indicator::camera);
+    return ShowCameraOnAsync_Original(pThis, value);
+}
+
+using ShowCameraAccessEnabledAsync_t = char(WINAPI*)(void* pThis, bool value);
+ShowCameraAccessEnabledAsync_t ShowCameraAccessEnabledAsync_Original;
+char WINAPI ShowCameraAccessEnabledAsync_Hook(void* pThis, bool value) {
+    g_currentIndicator.store(Indicator::camera);
+    return ShowCameraAccessEnabledAsync_Original(pThis, value);
+}
+
+// This one takes a message alongside the state on current builds and took only
+// the state on older ones. Declared with the extra parameter for both, since the
+// build that doesn't take it never reads the register it arrives in. That holds
+// because the mod is 64-bit only, x64 and arm64 both, where arguments go in
+// registers and the caller does the cleaning up. On a 32-bit stdcall build the
+// callee pops its own arguments and the same mismatch would walk the stack.
+using ShowMicrophoneMutedAsync_t = char(WINAPI*)(void* pThis,
+                                                 int value,
+                                                 void* text);
+ShowMicrophoneMutedAsync_t ShowMicrophoneMutedAsync_Original;
+char WINAPI ShowMicrophoneMutedAsync_Hook(void* pThis, int value, void* text) {
+    g_currentIndicator.store(Indicator::microphone);
+    return ShowMicrophoneMutedAsync_Original(pThis, value, text);
+}
+
+using ShowTextAsync_t = char(WINAPI*)(void* pThis, void* text, bool value);
+ShowTextAsync_t ShowTextAsync_Original;
+char WINAPI ShowTextAsync_Hook(void* pThis, void* text, bool value) {
+    g_currentIndicator.store(Indicator::text);
+    return ShowTextAsync_Original(pThis, text, value);
+}
+
 using HardwareConfirmatorHost_GetPositionRect_t =
     WinrtRect*(WINAPI*)(void* pThis, WinrtRect* retval, const WinrtRect* rect);
 HardwareConfirmatorHost_GetPositionRect_t
@@ -227,7 +481,7 @@ WinrtRect* WINAPI
 HardwareConfirmatorHost_GetPositionRect_Hook(void* pThis,
                                              WinrtRect* retval,
                                              const WinrtRect* rect) {
-    Wh_Log(L">");
+    Wh_Log(L"> indicator=%d", (int)g_currentIndicator.load());
 
     // Read the offsets once so the placement below uses one consistent pair.
     int offsetSettingX = g_settings.offsetX.load();
@@ -267,7 +521,8 @@ HardwareConfirmatorHost_GetPositionRect_Hook(void* pThis,
         pThis, retval, &shiftedRect);
 
     if (result) {
-        PlaceInArea(shiftedRect, offsetSettingX, offsetSettingY, result);
+        PlaceInArea(shiftedRect, CurrentPosition(), offsetSettingX,
+                    offsetSettingY, result);
 
         // Shift the result back.
         result->X += offsetX;
@@ -299,8 +554,9 @@ Position PositionFromString(PCWSTR value) {
     }
 
     // A stale or mistyped stored value would otherwise look like the mod simply
-    // isn't working.
-    if (wcscmp(value, L"windowsDefault") != 0) {
+    // isn't working. "same" is a valid per-indicator value, handled by the caller.
+    if (*value && wcscmp(value, L"windowsDefault") != 0 &&
+        wcscmp(value, L"same") != 0) {
         Wh_Log(L"Unknown position \"%s\", using the Windows default", value);
     }
 
@@ -310,10 +566,37 @@ Position PositionFromString(PCWSTR value) {
 void LoadSettings() {
     WindhawkUtils::StringSetting position =
         WindhawkUtils::StringSetting::make(L"position");
-    g_settings.position = PositionFromString(position.get());
+    // Same reasoning as the per-indicator settings below. A setting that was
+    // never written reads back empty, which happens to every setting added by an
+    // update, so empty has to mean the default declared in the block rather than
+    // windowsDefault. Left as windowsDefault it would trip the "nothing to do"
+    // check in Wh_ModInit and the mod would sit there doing nothing.
+    PCWSTR storedPosition = position.get();
+    g_settings.position =
+        *storedPosition ? PositionFromString(storedPosition) : kDefaultPosition;
 
     g_settings.offsetX = Wh_GetIntSetting(L"offsetX");
     g_settings.offsetY = Wh_GetIntSetting(L"offsetY");
+
+    static const PCWSTR kIndicatorSettings[] = {
+        L"perIndicator.volume",
+        L"perIndicator.brightness",
+        L"perIndicator.keyboardBrightness",
+        L"perIndicator.airplaneMode",
+        L"perIndicator.camera",
+        L"perIndicator.microphone",
+        L"perIndicator.text",
+    };
+    static_assert(ARRAYSIZE(kIndicatorSettings) == (size_t)Indicator::count);
+
+    for (size_t i = 0; i < ARRAYSIZE(kIndicatorSettings); i++) {
+        WindhawkUtils::StringSetting value =
+            WindhawkUtils::StringSetting::make(kIndicatorSettings[i]);
+        // Both "same" and an unset value, which reads back empty, already come
+        // back as windowsDefault and neither is logged as unrecognised. That is
+        // the "no override" sentinel, so the main position applies.
+        g_settings.perIndicator[i] = PositionFromString(value.get());
+    }
 }
 
 BOOL Wh_ModInit() {
@@ -324,8 +607,10 @@ BOOL Wh_ModInit() {
     // Nothing to place and nothing to nudge, so don't load the DLL or install a
     // hook that would only pass the rect straight through. Windhawk reloads the
     // mod after a settings change, so it comes back as soon as there is work.
-    if (g_settings.position == Position::windowsDefault && !g_settings.offsetX &&
-        !g_settings.offsetY) {
+    bool anyPerIndicator = AnyPerIndicator();
+
+    if (g_settings.position == Position::windowsDefault && !anyPerIndicator &&
+        !g_settings.offsetX && !g_settings.offsetY) {
         Wh_Log(L"Nothing to do");
         return FALSE;
     }
@@ -345,12 +630,102 @@ BOOL Wh_ModInit() {
             &HardwareConfirmatorHost_GetPositionRect_Original,
             HardwareConfirmatorHost_GetPositionRect_Hook,
         },
+        {
+            {LR"(private: struct winrt::fire_and_forget __cdecl winrt::Windows::Internal::HardwareConfirmator::implementation::HardwareConfirmatorHost::ShowVolumeAsync(int))"},
+            &ShowVolumeAsync_Original,
+            ShowVolumeAsync_Hook,
+            true,  // optional
+        },
+        {
+            {LR"(private: struct winrt::fire_and_forget __cdecl winrt::Windows::Internal::HardwareConfirmator::implementation::HardwareConfirmatorHost::ShowBrightnessAsync(int))"},
+            &ShowBrightnessAsync_Original,
+            ShowBrightnessAsync_Hook,
+            true,  // optional
+        },
+        {
+            {LR"(private: struct winrt::fire_and_forget __cdecl winrt::Windows::Internal::HardwareConfirmator::implementation::HardwareConfirmatorHost::ShowKeyboardBrightnessAsync(int))"},
+            &ShowKeyboardBrightnessAsync_Original,
+            ShowKeyboardBrightnessAsync_Hook,
+            true,  // optional
+        },
+        {
+            {LR"(private: struct winrt::fire_and_forget __cdecl winrt::Windows::Internal::HardwareConfirmator::implementation::HardwareConfirmatorHost::ShowAirplaneModeOnAsync(bool))"},
+            &ShowAirplaneModeOnAsync_Original,
+            ShowAirplaneModeOnAsync_Hook,
+            true,  // optional
+        },
+        {
+            {LR"(private: struct winrt::fire_and_forget __cdecl winrt::Windows::Internal::HardwareConfirmator::implementation::HardwareConfirmatorHost::ShowCameraOnAsync(bool))"},
+            &ShowCameraOnAsync_Original,
+            ShowCameraOnAsync_Hook,
+            true,  // optional
+        },
+        {
+            {LR"(private: struct winrt::fire_and_forget __cdecl winrt::Windows::Internal::HardwareConfirmator::implementation::HardwareConfirmatorHost::ShowCameraAccessEnabledAsync(bool))"},
+            &ShowCameraAccessEnabledAsync_Original,
+            ShowCameraAccessEnabledAsync_Hook,
+            true,  // optional
+        },
+        {
+            {LR"(private: struct winrt::fire_and_forget __cdecl winrt::Windows::Internal::HardwareConfirmator::implementation::HardwareConfirmatorHost::ShowTextAsync(struct winrt::hstring,bool))"},
+            &ShowTextAsync_Original,
+            ShowTextAsync_Hook,
+            true,  // optional
+        },
+        {
+            {LR"(private: struct winrt::fire_and_forget __cdecl winrt::Windows::Internal::HardwareConfirmator::implementation::HardwareConfirmatorHost::ShowMicrophoneMutedAsync(enum winrt::Windows::Internal::HardwareConfirmator::MicrophoneMuteState,struct winrt::hstring))",
+             LR"(private: struct winrt::fire_and_forget __cdecl winrt::Windows::Internal::HardwareConfirmator::implementation::HardwareConfirmatorHost::ShowMicrophoneMutedAsync(enum winrt::HWConfirmatorUI::MicrophoneMuteState,struct winrt::hstring))",
+             LR"(private: struct winrt::fire_and_forget __cdecl winrt::Windows::Internal::HardwareConfirmator::implementation::HardwareConfirmatorHost::ShowMicrophoneMutedAsync(enum winrt::Windows::Internal::HardwareConfirmator::MicrophoneMuteState))",
+             LR"(private: struct winrt::fire_and_forget __cdecl winrt::Windows::Internal::HardwareConfirmator::implementation::HardwareConfirmatorHost::ShowMicrophoneMutedAsync(enum winrt::HWConfirmatorUI::MicrophoneMuteState))"},
+            &ShowMicrophoneMutedAsync_Original,
+            ShowMicrophoneMutedAsync_Hook,
+            true,  // optional
+        },
     };
 
+    // All nine go in every time. The eight that record which kind is being shown
+    // are coroutine ramps that store a value and tail-call the original, so
+    // patching them when no kind has a spot of its own costs nothing worth
+    // measuring, and installing the same set every time keeps the symbol cache
+    // from being resolved again the first time someone turns an override on.
     if (!HookSymbols(g_hardwareConfirmatorModule, symbolHooks,
                      ARRAYSIZE(symbolHooks))) {
         Wh_Log(L"HookSymbols failed");
+        // Wh_ModUninit doesn't run when Wh_ModInit returns FALSE, so the
+        // reference taken above has to go back here.
+        FreeLibrary(g_hardwareConfirmatorModule);
+        g_hardwareConfirmatorModule = nullptr;
         return FALSE;
+    }
+
+    // An optional symbol that isn't found leaves its original pointer alone, so
+    // a null here means that kind would never be recorded and every kind after
+    // it would be placed using a stale one. Rather than misplace an indicator,
+    // drop to the main position for everything and say so in the log.
+    const void* kindRecorders[] = {
+        (void*)ShowVolumeAsync_Original,
+        (void*)ShowBrightnessAsync_Original,
+        (void*)ShowKeyboardBrightnessAsync_Original,
+        (void*)ShowAirplaneModeOnAsync_Original,
+        (void*)ShowCameraOnAsync_Original,
+        (void*)ShowCameraAccessEnabledAsync_Original,
+        (void*)ShowMicrophoneMutedAsync_Original,
+        (void*)ShowTextAsync_Original,
+    };
+
+    for (const void* recorder : kindRecorders) {
+        if (!recorder) {
+            g_kindUnreliable = true;
+            // Only worth saying to someone who has an override set. With the
+            // shipped defaults there is nothing being ignored to complain about.
+            if (anyPerIndicator) {
+                Wh_Log(
+                    L"An indicator entry point didn't resolve, so the position "
+                    L"per indicator settings are ignored and everything uses "
+                    L"the main position");
+            }
+            break;
+        }
     }
 
     return TRUE;
@@ -358,10 +733,29 @@ BOOL Wh_ModInit() {
 
 void Wh_ModUninit() {
     Wh_Log(L">");
+
+    // The hooks are already gone by this point, so handing back the reference
+    // taken in Wh_ModInit is safe. Without this every enable and disable cycle
+    // leaves one behind.
+    if (g_hardwareConfirmatorModule) {
+        FreeLibrary(g_hardwareConfirmatorModule);
+        g_hardwareConfirmatorModule = nullptr;
+    }
 }
 
 void Wh_ModSettingsChanged() {
     Wh_Log(L">");
 
+    // Every hook is installed either way now, so nothing here needs a reload and
+    // a change takes effect on the next indicator.
     LoadSettings();
+
+    // Turning on the first override no longer re-runs Wh_ModInit, so this is the
+    // only place the person it concerns can still be told.
+    if (g_kindUnreliable && AnyPerIndicator()) {
+        Wh_Log(
+            L"An indicator entry point didn't resolve, so the position "
+            L"per indicator settings are ignored and everything uses "
+            L"the main position");
+    }
 }
